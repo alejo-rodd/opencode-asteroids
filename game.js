@@ -12,7 +12,7 @@ const justPressed = {};
 window.addEventListener('keydown', e => {
   justPressed[e.code] = !keys[e.code];
   keys[e.code] = true;
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyS'].includes(e.code))
     e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -74,6 +74,44 @@ const SHIELD_DURATION            = 6;     // segundos de escudo al recoger el po
 const POWERUP_SPEED_CHANCE       = 0.05;  // 5% → speed buff
 const POWERUP_SHIELD_CHANCE      = 0.05;  // 5% → escudo
 const POWERUP_DROP_CHANCE        = POWERUP_SPEED_CHANCE + POWERUP_SHIELD_CHANCE;
+
+// ── Skins ─────────────────────────────────────────────────────────────────────
+const SKINS = [
+  {
+    id: 'classic',
+    name: 'Clásico',
+    body: '#fff',
+    bodyBuffed: '#0ff',
+    flame: 'rgba(255, 130, 0, 0.85)',
+    flameBuffed: 'rgba(0, 255, 255, 0.95)',
+    verts: [[20, 0], [-12, -9], [-7, 0], [-12, 9]],
+  },
+  {
+    id: 'neon',
+    name: 'Neón',
+    body: '#f0f',
+    bodyBuffed: '#0ff',
+    flame: 'rgba(255, 0, 255, 0.85)',
+    flameBuffed: 'rgba(0, 255, 255, 0.95)',
+    verts: [[22, 0], [-14, -6], [-9, 0], [-14, 6]],
+  },
+  {
+    id: 'crt',
+    name: 'Verde CRT',
+    body: '#3f3',
+    bodyBuffed: '#0f0',
+    flame: 'rgba(0, 255, 0, 0.85)',
+    flameBuffed: 'rgba(160, 255, 160, 0.95)',
+    verts: [[18, 0], [-10, -11], [-6, 0], [-10, 11]],
+  },
+];
+const SKIN_STORAGE_KEY = 'asteroids.skin';
+let currentSkinIndex = 0;
+try {
+  const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+  const idx = SKINS.findIndex(s => s.id === saved);
+  if (idx >= 0) currentSkinIndex = idx;
+} catch (_) {}
 
 class Asteroid {
   constructor(x, y, size = 3) {
@@ -278,20 +316,20 @@ class Ship {
     if (this.invincible > 0 && Math.floor(this.invincible * 8) % 2 === 0) return;
 
     const buffed = this.speedBuffTimer > 0;
+    const skin = SKINS[currentSkinIndex];
 
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    ctx.strokeStyle = buffed ? '#0ff' : '#fff';
+    ctx.strokeStyle = buffed ? skin.bodyBuffed : skin.body;
     ctx.lineWidth   = 1.5;
     ctx.lineJoin    = 'round';
 
-    // Silueta clásica: triángulo con muesca trasera
+    // Silueta del skin
     ctx.beginPath();
-    ctx.moveTo( 20,  0);   // nariz
-    ctx.lineTo(-12, -9);   // ala izquierda
-    ctx.lineTo( -7,  0);   // muesca trasera
-    ctx.lineTo(-12,  9);   // ala derecha
+    ctx.moveTo(skin.verts[0][0], skin.verts[0][1]);
+    for (let i = 1; i < skin.verts.length; i++)
+      ctx.lineTo(skin.verts[i][0], skin.verts[i][1]);
     ctx.closePath();
     ctx.stroke();
 
@@ -301,7 +339,7 @@ class Ship {
       ctx.moveTo(-8, -4);
       ctx.lineTo(-8 - rand(buffed ? 12 : 6, buffed ? 22 : 14), 0);
       ctx.lineTo(-8,  4);
-      ctx.strokeStyle = buffed ? 'rgba(0, 255, 255, 0.95)' : 'rgba(255, 130, 0, 0.85)';
+      ctx.strokeStyle = buffed ? skin.flameBuffed : skin.flame;
       ctx.stroke();
     }
 
@@ -536,6 +574,12 @@ function update(dt) {
     bullets.push(...ship.tryShoot());
   }
 
+  // Cambiar skin
+  if (pressed('KeyS')) {
+    currentSkinIndex = (currentSkinIndex + 1) % SKINS.length;
+    try { localStorage.setItem(SKIN_STORAGE_KEY, SKINS[currentSkinIndex].id); } catch (_) {}
+  }
+
   // Spawn periódico de estrella fugaz
   shootingStarTimer -= dt;
   if (shootingStarTimer <= 0) {
@@ -605,17 +649,18 @@ function update(dt) {
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
 function drawLifeIcon(x, y) {
+  const skin = SKINS[currentSkinIndex];
+  const s = 0.45;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(-Math.PI / 2);
-  ctx.strokeStyle = '#fff';
+  ctx.strokeStyle = skin.body;
   ctx.lineWidth   = 1.2;
   ctx.lineJoin    = 'round';
   ctx.beginPath();
-  ctx.moveTo( 9,  0);
-  ctx.lineTo(-6, -5);
-  ctx.lineTo(-3,  0);
-  ctx.lineTo(-6,  5);
+  ctx.moveTo(skin.verts[0][0] * s, skin.verts[0][1] * s);
+  for (let i = 1; i < skin.verts.length; i++)
+    ctx.lineTo(skin.verts[i][0] * s, skin.verts[i][1] * s);
   ctx.closePath();
   ctx.stroke();
   ctx.restore();
