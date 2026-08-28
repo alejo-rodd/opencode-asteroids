@@ -86,6 +86,8 @@ const SKINS = [
     flame: 'rgba(255, 130, 0, 0.85)',
     flameBuffed: 'rgba(0, 255, 255, 0.95)',
     verts: [[20, 0], [-12, -9], [-7, 0], [-12, 9]],
+    scale: 1,
+    pointsMul: 1,
   },
   {
     id: 'neon',
@@ -95,6 +97,8 @@ const SKINS = [
     flame: 'rgba(255, 0, 255, 0.85)',
     flameBuffed: 'rgba(0, 255, 255, 0.95)',
     verts: [[22, 0], [-14, -6], [-9, 0], [-14, 6]],
+    scale: 1,
+    pointsMul: 1,
   },
   {
     id: 'crt',
@@ -104,6 +108,19 @@ const SKINS = [
     flame: 'rgba(0, 255, 0, 0.85)',
     flameBuffed: 'rgba(160, 255, 160, 0.95)',
     verts: [[18, 0], [-10, -11], [-6, 0], [-10, 11]],
+    scale: 1,
+    pointsMul: 1,
+  },
+  {
+    id: 'morado',
+    name: 'Morado',
+    body: '#a020f0',
+    bodyBuffed: '#d080ff',
+    flame: 'rgba(180, 0, 255, 0.85)',
+    flameBuffed: 'rgba(220, 160, 255, 0.95)',
+    verts: [[20, 0], [-12, -9], [-7, 0], [-12, 9]],
+    scale: 2,
+    pointsMul: 2,
   },
 ];
 const SKIN_STORAGE_KEY = 'asteroids.skin';
@@ -266,7 +283,7 @@ class Ship {
     this.angle  = -Math.PI / 2;
     this.vx     = 0;
     this.vy     = 0;
-    this.radius = 12;
+    this.radius = 12 * SKINS[currentSkinIndex].scale;
     this.thrusting     = false;
     this.invincible    = 3;
     this.shootCooldown = 0;
@@ -307,7 +324,7 @@ class Ship {
   tryShoot() {
     if (this.shootCooldown > 0 || this.dead) return [];
     this.shootCooldown = 0.2;
-    const NOSE = 21;
+    const NOSE = 21 * SKINS[currentSkinIndex].scale;
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
     if (this.tripleShotTimer > 0) {
@@ -328,12 +345,14 @@ class Ship {
 
     const buffed = this.speedBuffTimer > 0;
     const skin = SKINS[currentSkinIndex];
+    const scale = skin.scale;
 
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
+    ctx.scale(scale, scale);
     ctx.strokeStyle = buffed ? skin.bodyBuffed : skin.body;
-    ctx.lineWidth   = 1.5;
+    ctx.lineWidth   = 1.5 / scale;
     ctx.lineJoin    = 'round';
 
     // Silueta del skin
@@ -362,7 +381,7 @@ class Ship {
       ctx.strokeStyle = `rgba(0, 255, 255, ${pulse.toFixed(2)})`;
       ctx.lineWidth   = 2;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, 18 + pulse * 1.5, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, (18 + pulse * 1.5) * scale, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -544,8 +563,9 @@ function explode(x, y, count = 8) {
 
 function destroyAsteroid(a, intoArr) {
   a.dead = true;
-  score += POINTS[a.size];
-  if (a instanceof ShootingStar) score += SHOOTING_STAR_BONUS;
+  const mul = SKINS[currentSkinIndex].pointsMul;
+  score += POINTS[a.size] * mul;
+  if (a instanceof ShootingStar) score += SHOOTING_STAR_BONUS * mul;
   explode(a.x, a.y, a.size * 5);
   const roll = Math.random();
   let kind = null;
@@ -597,6 +617,7 @@ function update(dt) {
   // Cambiar skin
   if (pressed('KeyS')) {
     currentSkinIndex = (currentSkinIndex + 1) % SKINS.length;
+    ship.radius = 12 * SKINS[currentSkinIndex].scale;
     try { localStorage.setItem(SKIN_STORAGE_KEY, SKINS[currentSkinIndex].id); } catch (_) {}
   }
 
@@ -671,17 +692,18 @@ function update(dt) {
 // ── Draw ──────────────────────────────────────────────────────────────────────
 function drawLifeIcon(x, y) {
   const skin = SKINS[currentSkinIndex];
-  const s = 0.45;
+  const s = 0.45 * skin.scale;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(-Math.PI / 2);
+  ctx.scale(s, s);
   ctx.strokeStyle = skin.body;
-  ctx.lineWidth   = 1.2;
+  ctx.lineWidth   = 1.2 / s;
   ctx.lineJoin    = 'round';
   ctx.beginPath();
-  ctx.moveTo(skin.verts[0][0] * s, skin.verts[0][1] * s);
+  ctx.moveTo(skin.verts[0][0], skin.verts[0][1]);
   for (let i = 1; i < skin.verts.length; i++)
-    ctx.lineTo(skin.verts[i][0] * s, skin.verts[i][1] * s);
+    ctx.lineTo(skin.verts[i][0], skin.verts[i][1]);
   ctx.closePath();
   ctx.stroke();
   ctx.restore();
